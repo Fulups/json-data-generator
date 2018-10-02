@@ -27,6 +27,7 @@ public class KafkaLogger implements EventLogger {
     public static final String BROKER_SERVER_PROP_NAME = "broker.server";
     public static final String BROKER_PORT_PROP_NAME = "broker.port";
     public static final String KERBEROS_CONF = "kerberos";
+    public static final String SASL_CONF = "sasl";
 
     private final KafkaProducer<String, String> producer;
     private final String topic;
@@ -42,21 +43,55 @@ public class KafkaLogger implements EventLogger {
         this.props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         this.props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        String bootstrapServerAsString = "";
+        String bootstrapServerAsString = brokerHost + ":" + brokerPort.toString();
 
+        Map<String, String> advancedConf = null;
         if (props.get(KERBEROS_CONF) != null) {
-            Map<String, String> kerberosConf = (Map<String, String>) props.get(KERBEROS_CONF);
-
-            bootstrapServerAsString = kerberosConf.get("kafka.brokers.servers");
-            this.props.put("security.protocol", kerberosConf.get("kafka.security.protocol"));
-            this.props.put("sasl.kerberos.service.name", kerberosConf.get("kafka.service.name"));
-            System.setProperty("java.security.auth.login.config", kerberosConf.get("kafka.jaas.file"));
-            System.setProperty("java.security.krb5.conf", kerberosConf.get("kerberos.conf.file"));
-        } else {
-            bootstrapServerAsString = brokerHost + ":" + brokerPort.toString();
+            advancedConf = (Map<String, String>) props.get(KERBEROS_CONF);
+            
+            this.props.put("security.protocol", advancedConf.get("kafka.security.protocol"));
+            this.props.put("sasl.kerberos.service.name", advancedConf.get("kafka.service.name"));
+            System.setProperty("java.security.auth.login.config", advancedConf.get("kafka.jaas.file"));
+            System.setProperty("java.security.krb5.conf", advancedConf.get("kerberos.conf.file"));
+        } else if (props.get(SASL_CONF) != null) {
+            advancedConf = (Map<String, String>) props.get(SASL_CONF);
+            
+            this.props.put("security.protocol", advancedConf.get("kafka.security.protocol"));
+            this.props.put("sasl.mechanism", advancedConf.get("kafka.sasl.mechanism"));
+            System.setProperty("java.security.auth.login.config", advancedConf.get("kafka.jaas.file"));
         }
-        this.props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServerAsString);
 
+        if (advancedConf != null) {
+            if (advancedConf.get("kafka.brokers.servers") != null){
+                bootstrapServerAsString = advancedConf.get("kafka.brokers.servers");
+            } else {
+                bootstrapServerAsString = brokerHost + ":" + brokerPort.toString();
+            }
+            
+            if (advancedConf.get("kafka.client.id") != null) {
+                this.props.put(ProducerConfig.CLIENT_ID_CONFIG, advancedConf.get("kafka.client.id"));
+            }
+            if (advancedConf.get("kafka.compression") != null) {
+                // Compression values: none, gzip, snappy, or lz4
+                this.props.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, advancedConf.get("kafka.compression"));
+            }
+            if (advancedConf.get("kafka.batch.size") != null) {
+                this.props.put(ProducerConfig.BATCH_SIZE_CONFIG, advancedConf.get("kafka.batch.size"));
+            }
+            if (advancedConf.get("kafka.acks") != null) {
+                // Acknowledgment values: all, leader or none
+                this.props.put(ProducerConfig.ACKS_CONFIG, advancedConf.get("kafka.acks"));
+            }
+            if (advancedConf.get("kafka.linger.ms") != null) {
+                this.props.put(ProducerConfig.LINGER_MS_CONFIG, advancedConf.get("kafka.linger.ms"));
+            }
+            if (advancedConf.get("kafka.request.per.connection") != null) {
+                this.props.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, advancedConf.get("kafka.request.per.connection"));
+            }
+        }
+        
+        this.props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServerAsString);
+        
         producer = new KafkaProducer<>(this.props);
 
         this.topic = (String) props.get("topic");
@@ -81,7 +116,6 @@ public class KafkaLogger implements EventLogger {
     }
 
     private void logEvent(String event) {
-        boolean sync = false;
 
         String output = event;
         if (flatten) {

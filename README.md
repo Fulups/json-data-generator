@@ -183,8 +183,45 @@ If you need to send data to kafka with kerberos you can provide the next configu
 * `kafka.security.protocol` : Sets kafka producer property 'security.protocol'
 * `kafka.service.name`: Sets kafka producer property 'sasl.kerberos.service.name'
 
-
 In a kerberized kafka cluster, the keytab file must be defined inside JAAS file `"kafka.jaas.file": "<path_your_jaas_file_kafka_jaas.conf"` 
+
+**Kafka on SASL cluster**
+
+Valid only for kafka version 0.10.2.0 or higher.
+
+If you need to send data to kafka with SASL authentication you can provide the next configuration:
+
+```
+{
+    "type": "kafka",
+    "topic": "logevent",
+    "flatten": false,
+    "sync": false,
+    "sasl": {
+      "kafka.brokers.servers": "broker1:port,broker2:port,broker3:port",
+      "kafka.jaas.file": "<path_your_jaas_file_kafka_jaas.conf",
+      "kafka.security.protocol": "SASL_PLAINTEXT",
+      "kafka.sasl.mechanism": "SCRAM-SHA-512"
+  }
+}
+```
+
+- `kafka.jaas.file` : Sets the system property 'java.security.auth.login.config'
+- `kafka.security.protocol` : Sets kafka producer property 'security.protocol'
+- `kafka.sasl.mechanism`: Sets kafka producer property 'sasl.mechanism'
+
+In a SASL kafka cluster, the username and password must be defined inside JAAS file `"kafka.jaas.file": "<path_your_jaas_file_kafka_jaas.conf"` 
+
+**Kafka "advanced configuration" for kerberized or SASL cluster**
+
+Valid only for kafka version 0.10.2.0 or higher.
+
+- `kafka.client.id` : Sets kafka producer property 'client.id'
+- `kafka.compression`: Sets kafka producer property 'compression.type' (none, gzip, snappy, or lz4)
+- `kafka.batch.size` : Sets kafka producer property 'batch.size'
+- `kafka.acks` : Sets kafka producer property 'acks'
+- `kafka.linger.ms` : Sets kafka producer property 'linger.ms'
+- `kafka.request.per.connection` : Sets kafka producer property 'max.in.flight.requests.per.connection'
 
 **NATS**
 
@@ -294,9 +331,9 @@ The `Workflow` is defined in seperate files to allow you to have and run multipl
 | eventFrequency | integer | The time in milliseconds events between steps should be output at |
 | varyEventFrequency | boolean | If true, a random amount (between 0 and half the eventFrequency) of time will be added/subtracted to the eventFrequency |
 | repeatWorkflow | boolean | If true, the workflow will repeat after it finishes |
-| timeBetweenRepeat | integer | The time in milliseconds to wait before the Workflow is restarted |  
+| timeBetweenRepeat | integer | The time in milliseconds to wait before the Workflow is restarted |
 | varyRepeatFrequency | boolean | If true, a random amount (between 0 and half the eventFrequency) of time will be added/subtracted to the timeBewteenRepeat  |
-| stepRunMode | string | Possible values: sequential, random, random-pick-one. Default is sequential |  
+| stepRunMode | string | Possible values: sequential, random, random-pick-one. Default is sequential |
 | steps | Array | A list of Workflow Steps to be run in this Workflow |
 
 **Workflow Steps**
